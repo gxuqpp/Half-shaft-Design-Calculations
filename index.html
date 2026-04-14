@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>半轴设计计算工具</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22262f;
+    --border: #2e3340;
+    --border-active: #4a7cff;
+    --text: #e2e5ec;
+    --text-dim: #8891a4;
+    --text-muted: #5c6478;
+    --accent: #4a7cff;
+    --accent2: #6c8fff;
+    --ok: #34d399;
+    --ok-bg: rgba(52,211,153,0.12);
+    --err: #f87171;
+    --err-bg: rgba(248,113,113,0.12);
+    --warn: #fbbf24;
+    --warn-bg: rgba(251,191,36,0.12);
+    --purple: #a78bfa;
+    --purple-bg: rgba(167,139,250,0.10);
+    --orange: #fb923c;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #131520 0%, #1e2235 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 24px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(74,124,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff 0%, #8891a4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  .header .sub {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .header .sub strong { color: var(--accent2); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3f50 transparent;
+  }
+  .tab {
+    padding: 14px 22px;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    user-select: none;
+    letter-spacing: 0.01em;
+  }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Content ── */
+  .content { display: none; padding: 20px; max-width: 1100px; margin: 0 auto; }
+  .content.active { display: block; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+  .card-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-title .icon { font-size: 18px; }
+  .card-title .tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(74,124,255,0.12);
+    color: var(--accent2);
+    margin-left: auto;
+  }
+
+  /* ── Grid ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── Field ── */
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .field label {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .field input, .field select {
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: var(--surface2);
+    color: var(--text);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 46px;
+    outline: none;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(74,124,255,0.15);
+  }
+  .field .unit {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    font-weight: 500;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 46px;
+    font-family: 'Noto Sans SC', sans-serif;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 2px 8px rgba(74,124,255,0.25);
+  }
+  .btn-primary:hover { background: #3a6cf0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(74,124,255,0.35); }
+  .btn-ok { background: rgba(52,211,153,0.15); color: var(--ok); border: 1.5px solid rgba(52,211,153,0.3); }
+  .btn-ok:hover { background: rgba(52,211,153,0.25); }
+  .btn-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+
+  /* ── Formula Box ── */
+  .formula-box {
+    background: var(--surface2);
+    border-left: 4px solid var(--accent);
+    padding: 16px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 2.2;
+    overflow-x: auto;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .formula-box strong { color: var(--text); }
+
+  /* ── Result Table ── */
+  .tbl-wrap { overflow-x: auto; width: 100%; border-radius: 8px; }
+  .result-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .result-table th {
+    background: var(--surface2);
+    padding: 12px 14px;
+    text-align: left;
+    border: 1px solid var(--border);
+    font-weight: 700;
+    color: var(--text-dim);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .result-table td {
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    line-height: 1.6;
+    color: var(--text);
+  }
+  .result-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  /* ── Result Cards ── */
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .result-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+  .result-card .rc-label { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; line-height: 1.5; font-weight: 500; }
+  .result-card .rc-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .result-card .rc-unit { font-size: 14px; color: var(--text-dim); }
+  .result-card.rc-ok { border-color: var(--ok); background: var(--ok-bg); }
+  .result-card.rc-ok .rc-value { color: var(--ok); }
+  .result-card.rc-err { border-color: var(--err); background: var(--err-bg); }
+  .result-card.rc-err .rc-value { color: var(--err); }
+
+  /* ── Info/Tip ── */
+  .info-box {
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    margin: 12px 0;
+    line-height: 1.8;
+    font-weight: 500;
+  }
+  .info-green { background: var(--ok-bg); border-left: 4px solid var(--ok); color: var(--ok); }
+  .info-blue { background: rgba(74,124,255,0.08); border-left: 4px solid var(--accent); color: var(--accent2); }
+  .info-purple { background: var(--purple-bg); border-left: 4px solid var(--purple); color: var(--purple); }
+  .info-orange { background: var(--warn-bg); border-left: 4px solid var(--orange); color: var(--orange); }
+
+  /* ── Section Title ── */
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 20px 0 12px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .st-green { background: var(--ok-bg); color: var(--ok); }
+  .st-blue { background: rgba(74,124,255,0.08); color: var(--accent2); }
+  .st-purple { background: var(--purple-bg); color: var(--purple); }
+
+  /* ── Radio Type Selector ── */
+  .type-selector {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .type-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 14px 20px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.2s;
+    flex: 1;
+    min-width: 200px;
+  }
+  .type-option:hover { border-color: var(--text-muted); }
+  .type-option.selected {
+    border-color: var(--accent);
+    background: rgba(74,124,255,0.08);
+    box-shadow: 0 0 0 3px rgba(74,124,255,0.1);
+  }
+  .type-option input[type="radio"] {
+    accent-color: var(--accent);
+    width: 18px;
+    height: 18px;
+  }
+
+  /* ── Summary Card ── */
+  .summary-banner {
+    background: linear-gradient(135deg, #131520 0%, #1a2540 50%, #1e2a48 100%);
+    border: 1px solid var(--border);
+    padding: 28px 24px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+  }
+  .summary-banner h2 { font-size: 22px; font-weight: 900; color: white; margin-bottom: 4px; }
+  .summary-banner .sub { color: var(--text-dim); font-size: 14px; }
+  .summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .stat-box {
+    background: rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .stat-box .sv { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: white; }
+  .stat-box .sl { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ── Badge ── */
+  .badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+  .badge-ok { background: var(--ok-bg); color: var(--ok); }
+  .badge-err { background: var(--err-bg); color: var(--err); }
+
+  /* ── Mobile ── */
+  @media (max-width: 780px) {
+    .grid2, .grid3 { grid-template-columns: 1fr !important; }
+    .result-grid { grid-template-columns: 1fr !important; }
+    .header { padding: 20px 16px; }
+    .header h1 { font-size: 22px; }
+    .content { padding: 14px 12px; }
+    .card { padding: 16px 14px; }
+    .tab { padding: 12px 14px; font-size: 13px; }
+    .btn { width: 100%; }
+    .btn-bar { flex-direction: column; }
+    .type-selector { flex-direction: column; }
+    .formula-box { font-size: 12px; }
+    .result-card .rc-value { font-size: 22px; }
+    .result-table { font-size: 12px; min-width: 560px; }
+  }
+user-select: none
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚙️ 半轴设计计算工具</h1>
+  <div class="sub">基于《汽车设计》第6版（闵海涛、王建华）· <strong>全浮式半轴</strong> · <strong>半浮式半轴三工况校核</strong> · <strong>可靠性设计</strong></div>
+</div>
+
+<div class="tabs" id="tabBar">
+  <div class="tab active" onclick="switchTab(0)">① 公共参数 & 类型选择</div>
+  <div class="tab" onclick="switchTab(1)">② 全浮式半轴</div>
+  <div class="tab" onclick="switchTab(2)">③ 半浮式半轴</div>
+  <div class="tab" onclick="switchTab(3)">④ 可靠性设计</div>
+  <div class="tab" onclick="switchTab(4)">⑤ 结果汇总</div>
+</div>
+
+<!-- ═══════ TAB 0: 公共参数 ═══════ -->
+<div class="content active" id="tab0">
+  <div class="card">
+    <div class="card-title"><span class="icon">📋</span>整车与载荷基本参数 <span class="tag">输入区</span></div>
+    <div class="grid3">
+      <div class="field"><label>满载总质量 mₐ (kg)</label><input type="number" id="ma" value="2195"><div class="unit">kg</div></div>
+      <div class="field"><label>后轴荷分配比</label><input type="number" id="axleRatio" value="0.55" step="0.01"><div class="unit">后轴荷占整备质量比例</div></div>
+      <div class="field"><label>车轮滚动半径 rr (mm)</label><input type="number" id="rr_shaft" value="346.9" step="0.1"><div class="unit">mm（轮胎动态半径）</div></div>
+      <div class="field"><label>轮距 B₂ (mm)</label><input type="number" id="B2_shaft" value="1615" step="5"><div class="unit">mm</div></div>
+      <div class="field"><label>驱动桥最大静载荷 G₂ (N)</label><input type="number" id="G2_shaft" value="11843"><div class="unit">= mₐ × g × 后轴荷比 <button class="btn" style="padding:4px 12px;min-height:unset;font-size:12px;background:var(--surface2);color:var(--accent);border:1px solid var(--border);margin-left:8px" onclick="autoCalcG2()">自动计算</button></div></div>
+      <div class="field"><label>附着系数 φ</label><input type="number" id="phi_shaft" value="0.8" step="0.01"><div class="unit">计算时取 0.8</div></div>
+      <div class="field"><label>负荷转移系数 m₂'</label><input type="number" id="m2p_shaft" value="1.2" step="0.05"><div class="unit">一般取 1.2</div></div>
+      <div class="field"><label>动载系数 k</label><input type="number" id="k_dyn" value="1.75" step="0.05"><div class="unit">乘用车 1.75；货车 2.0；越野车 2.5</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">🔧</span>半轴结构类型选择</div>
+    <div class="type-selector">
+      <label class="type-option selected" id="lbl-sf" onclick="onShaftTypeChange('semifloat')">
+        <input type="radio" name="halfShaftType" value="semifloat" checked>
+        <div>
+          <div>🚗 半浮式半轴</div>
+          <div style="font-size:12px;color:var(--text-muted);font-weight:400;margin-top:4px">乘用车 / 非断开式驱动桥<br>承受弯矩+扭矩</div>
+        </div>
+      </label>
+      <label class="type-option" id="lbl-ff" onclick="onShaftTypeChange('fullfloat')">
+        <input type="radio" name="halfShaftType" value="fullfloat">
+        <div>
+          <div>🚛 全浮式半轴</div>
+          <div style="font-size:12px;color:var(--text-muted);font-weight:400;margin-top:4px">商用车 / 仅承受扭矩<br>弯矩由桥壳承受</div>
+        </div>
+      </label>
+    </div>
+    <input type="hidden" id="halfShaftType" value="semifloat">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📐</span>关键公式总览</div>
+    <div class="formula-box">
+<strong>全浮式（式5-39~5-41，式5-49）</strong>
+Mφ = ½ × m₂ʹ × G₂ × rr × φ　（单侧车轮附着力矩，N·mm）
+d ≥ K × ∛Mφ　（K=0.205~0.218）
+τ = 16Mφ / (π × d³) ≤ [τ]　　（许用500~700 MPa）
+θ = Mφ×L / (G×Ip) × 180/π　 （扭转角，宜6°~15°/m）
+
+<strong>半浮式（式5-42~5-48，三工况）</strong>
+工况一：纵向力最大 → σn1=√(σ²+4τ²) ≤ [σ_n]
+工况二：侧向力最大（侧滑）→ σ_外轮 / σ_内轮 ≤ [σ_n]
+工况三：垂直力最大（冲击）→ σ=16kG₂a/(πd³) ≤ [σ_n]=600~750 MPa
+
+<strong>可靠性设计（式5-50~5-55）</strong>
+g(X)=r−16T/(πd³)，β=μg/σg，R=Φ(β)
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ TAB 1: 全浮式半轴 ═══════ -->
+<div class="content" id="tab1">
+  <div class="card">
+    <div class="card-title"><span class="icon">🔩</span>全浮式半轴设计（式5-39~5-41，式5-49） <span class="tag">仅承受扭矩</span></div>
+    <div class="info-box info-green">全浮式半轴仅承受转矩，弯矩全由桥壳承受。以车轮附着力矩 Mφ 为设计依据（φ=0.8）。</div>
+    <div class="grid3">
+      <div class="field"><label>直径系数 K（式5-49）</label><input type="number" id="K_coef" value="0.210" step="0.001"><div class="unit">范围 0.205~0.218，取 0.210</div></div>
+      <div class="field"><label>许用扭转切应力 [τ] (MPa)</label><input type="number" id="tauAllow" value="500" step="10"><div class="unit">40Cr调质：500~600 MPa</div></div>
+      <div class="field"><label>半轴有效长度 L_ff (mm)</label><input type="number" id="Ls_ff" value="800" step="10"><div class="unit">用于计算扭转角（式5-41）</div></div>
+    </div>
+    <div class="formula-box">
+式5-39: Mφ = ½ × m₂ʹ × G₂ × rr × φ　（单侧，N·mm）
+式5-49: d ≥ K × ∛Mφ　（K=0.205~0.218；Mφ单位 N·mm，d 单位 mm）
+式5-40: τ = 16Mφ / (π × d³) ≤ [τ]　（扭转切应力，MPa）
+式5-41: θ = Mφ×L/(G×Ip)×180/π　（G=80000 MPa，Ip=πd⁴/32）
+　　　　扭转切应力宜 500~700 MPa；转角宜每米 6°~15°
+    </div>
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="calcFullFloat()">✅ 计算全浮式半轴</button>
+    </div>
+  </div>
+  <div id="fullFloatResults" style="margin-top:4px"></div>
+</div>
+
+<!-- ═══════ TAB 2: 半浮式半轴 ═══════ -->
+<div class="content" id="tab2">
+  <div class="card">
+    <div class="card-title"><span class="icon">⚡</span>半浮式半轴设计（三工况，式5-42~5-48） <span class="tag">弯矩+扭矩</span></div>
+    <div class="info-box info-blue">半浮式半轴同时承受弯矩+转矩，需校核三工况最大合成应力。许用合成应力 [σ_n]=600~750 MPa（式5-43）。</div>
+    <div class="grid3">
+      <div class="field"><label>轮毂支承至车轮中心距 a (mm)</label><input type="number" id="a_hub" value="100" step="5"><div class="unit">图5-29a 中 a 尺寸，一般 80~150mm</div></div>
+      <div class="field"><label>质心高度 hg (mm)</label><input type="number" id="hg_shaft" value="560" step="10"><div class="unit">工况二侧滑用；乘用车 500~620mm</div></div>
+      <div class="field"><label>半轴设计直径 d (mm)</label><input type="number" id="d_semifloat" value="38" step="1"><div class="unit">初估或前次迭代结果</div></div>
+      <div class="field"><label>许用合成应力 [σ_n] (MPa)</label><input type="number" id="sigmaAllow" value="700" step="10"><div class="unit">式5-43；600~750 MPa</div></div>
+    </div>
+    <div class="formula-box">
+<strong>工况一</strong>（式5-42/43，纵向力Fx2最大；m₂'=1.2，φ=0.8）
+Fz2=m₂ʹG₂/2，Fx2=Fz2×φ
+σ=32a√(Fx2²+Fz2²)/(πd³)，τ=16Fx2×rr/(πd³)，σn1=√(σ²+4τ²)
+<strong>工况二</strong>（式5-44~46，侧向力Fy2最大，侧滑；φ₁=1.0）
+Fz2o=G₂(0.5+hg×φ₁/B₂)，Fz2i=G₂-Fz2o，Fy2o=Fz2o，Fy2i=Fz2i
+σo=32(Fy2o×rr-Fz2o×a)/(πd³)（外轮）；σi=32(Fy2i×rr+Fz2i×a)/(πd³)（内轮）
+<strong>工况三</strong>（式5-47/48，垂直力Fz2最大；k=1.75乘用/2.0货/2.5越野）
+Fz2=kG₂/2，σ=32Fz2×a/(πd³)=16kG₂a/(πd³) ≤ [σ_n]=600~750 MPa
+→ 反推最小直径：d ≥ ∛(16kG₂a/(π×[σ_n]))
+    </div>
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="calcSemiFloat3Cases()">✅ 计算半浮式三工况校核</button>
+    </div>
+  </div>
+  <div id="semiFloatResults" style="margin-top:4px"></div>
+</div>
+
+<!-- ═══════ TAB 3: 可靠性设计 ═══════ -->
+<div class="content" id="tab3">
+  <div class="card">
+    <div class="card-title"><span class="icon">📊</span>半轴可靠性设计（式5-50~5-55） <span class="tag">二阶矩法</span></div>
+    <div class="info-box info-purple">将材料强度 r、传递转矩 T、直径 d 视为正态分布随机变量，用二阶矩法计算可靠度，或由目标可靠度求最小均值直径 μd。</div>
+    <div class="grid3">
+      <div class="field"><label>材料扭转强度均值 μr (MPa)</label><input type="number" id="mu_r" value="650" step="10"><div class="unit">40Cr淬火：一般 600~750 MPa</div></div>
+      <div class="field"><label>材料强度标准差 σr (MPa)</label><input type="number" id="sigma_r" value="65" step="5"><div class="unit">变异系数约 10%，σr≈0.1μr</div></div>
+      <div class="field"><label>转矩均值 μT (N·m)</label><input type="number" id="mu_T" value="400" step="10"><div class="unit">可取 Mφ 计算值</div></div>
+      <div class="field"><label>转矩标准差 σT (N·m)</label><input type="number" id="sigma_T" value="80" step="5"><div class="unit">σT≈0.2×μT</div></div>
+      <div class="field"><label>目标可靠度 R</label>
+        <select id="R_target">
+          <option value="0.90">0.90（β=1.282）</option>
+          <option value="0.99">0.99（β=2.326）</option>
+          <option value="0.999" selected>0.999（β=3.090）</option>
+          <option value="0.9999">0.9999（β=3.719）</option>
+          <option value="0.99999">0.99999（β=4.265）</option>
+        </select>
+      </div>
+      <div class="field"><label>已设计直径 d (mm)</label><input type="number" id="d_reliab" value="38" step="1"><div class="unit">由全浮/半浮设计得出</div></div>
+    </div>
+    <div class="formula-box">
+式5-50: τ=16T/(πd³)　式5-51: g(X)=r−16T/(πd³)　（极限状态函数）
+式5-52: μg=μr−16μT/(πμd³)；σg²=σr²+(16σT/(πμd³))²+(0.24μT/(πμd³))²
+式5-53: β=μg/σg　　式5-54: R=Φ(β)　（标准正态分布函数）
+式5-55（设计方程）: (μr²−β²σr²)μd⁶−2μrAμd³+A²−β²B=0
+　A=16μT/π，B=(256σT²+0.0576μT²)/π²　→ 数值求解最小μd
+    </div>
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="calcReliability()">✅ 计算可靠性</button>
+    </div>
+  </div>
+  <div id="reliabilityResults" style="margin-top:4px"></div>
+</div>
+
+<!-- ═══════ TAB 4: 结果汇总 ═══════ -->
+<div class="content" id="tab4">
+  <div class="summary-banner">
+    <h2>⚙️ 半轴设计汇总报告</h2>
+    <div class="sub">请依次完成各Tab的计算后点击「生成汇总」</div>
+    <div class="summary-stats" id="summaryStats"></div>
+  </div>
+  <div class="btn-bar" style="margin-bottom:18px">
+    <button class="btn btn-primary" onclick="buildSummary()">📋 生成汇总</button>
+    <button class="btn btn-ok" onclick="calcAllAndSummary()">🚀 一键计算全部 & 汇总</button>
+  </div>
+  <div id="summaryBody"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// 全局
+// ═══════════════════════════════════════════
+const G_ACC = 9.81;
+let state = {};
+
+function switchTab(n) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.content').forEach((c,i) => c.classList.toggle('active', i===n));
+}
+
+function v(id) { const el=document.getElementById(id); return el ? (parseFloat(el.value)||0) : 0; }
+function fmtN(val, d=2) { return isFinite(val) ? val.toFixed(d) : '—'; }
+
+function autoCalcG2() {
+  const G2 = v('ma') * G_ACC * v('axleRatio');
+  document.getElementById('G2_shaft').value = fmtN(G2, 0);
+}
+
+// ═══════════════════════════════════════════
+// UI 渲染工具
+// ═══════════════════════════════════════════
+function mkCards(items) {
+  return '<div class="result-grid">' + items.map(it => {
+    const cls = it.ok === true ? 'rc-ok' : it.ok === false ? 'rc-err' : '';
+    return `<div class="result-card ${cls}"><div class="rc-label">${it.label}</div>
+      <div class="rc-value">${it.value}<span class="rc-unit"> ${it.unit||''}</span></div>
+      ${it.note ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5">${it.note}</div>` : ''}
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function mkTable(rows) {
+  return '<div class="tbl-wrap"><table class="result-table"><tr>' +
+    Object.keys(rows[0]).map(k => `<th>${k}</th>`).join('') + '</tr>' +
+    rows.map(r => '<tr>' + Object.values(r).map(v => `<td>${v}</td>`).join('') + '</tr>').join('') +
+    '</table></div>';
+}
+
+function badge(ok, yes='合格', no='不合格') {
+  return `<span class="badge ${ok?'badge-ok':'badge-err'}">${ok?'✓ '+yes:'✗ '+no}</span>`;
+}
+
+// ═══════════════════════════════════════════
+// 半轴类型切换
+// ═══════════════════════════════════════════
+function onShaftTypeChange(val) {
+  document.getElementById('halfShaftType').value = val;
+  const isFF = val === 'fullfloat';
+  document.getElementById('lbl-ff').classList.toggle('selected', isFF);
+  document.getElementById('lbl-sf').classList.toggle('selected', !isFF);
+  document.querySelector('#lbl-ff input').checked = isFF;
+  document.querySelector('#lbl-sf input').checked = !isFF;
+}
+
+// ═══════════════════════════════════════════
+// A. 全浮式半轴（式5-39~5-41，5-49）
+// ═══════════════════════════════════════════
+function calcFullFloat() {
+  const G2_  = v('G2_shaft');
+  const rr_  = v('rr_shaft') / 1000; // m
+  const phi_ = v('phi_shaft');
+  const m2p_ = v('m2p_shaft');
+  const K_   = v('K_coef');
+  const tauA = v('tauAllow');
+  const Ls_  = v('Ls_ff');
+
+  // 式5-39
+  const Mphi = 0.5 * m2p_ * G2_ * (rr_*1000) * phi_;
+
+  // 式5-49
+  const d_calc = K_ * Math.pow(Mphi, 1/3);
+  const d_design = Math.ceil(d_calc);
+  state.Mphi = Mphi;
+  state.d_ff = d_design;
+
+  // 式5-40
+  const d_m3 = Math.pow(d_design, 3);
+  const tau = 16 * Mphi / (Math.PI * d_m3);
+
+  // 式5-41
+  const G_shear = 80000;
+  const Ip = Math.PI * Math.pow(d_design,4) / 32;
+  const theta_deg = (Mphi * Ls_) / (G_shear * Ip) * (180 / Math.PI);
+  const theta_per_m = theta_deg / (Ls_ / 1000);
+
+  state.Ts = Mphi / 1000;
+  state.d_shaft = d_design;
+  state.tau_actual_ff = tau;
+  state.halfShaft_ok_ff = (tau <= tauA);
+  state.theta_per_m = theta_per_m;
+
+  document.getElementById('fullFloatResults').innerHTML =
+    '<div class="card"><div class="section-title st-green">全浮式半轴计算结果</div>' +
+    mkCards([
+      { label: '式5-39：车轮附着力矩 Mφ', value: fmtN(Mphi,0), unit: 'N·mm', note: '= ½×'+fmtN(m2p_,1)+'×'+fmtN(G2_,0)+'×'+fmtN(rr_*1000,1)+'×'+phi_ },
+      { label: '式5-49：计算直径 d（理论）', value: fmtN(d_calc,2), unit: 'mm', note: '= K×∛Mφ = '+K_+'×∛'+fmtN(Mphi,0) },
+      { label: '设计直径（取整）d', value: d_design, unit: 'mm', ok: true },
+      { label: '式5-40：扭转切应力 τ', value: fmtN(tau,1), unit: 'MPa', ok: tau<=tauA, note: '许用 [τ]='+tauA+' MPa；宜500~700 MPa' },
+      { label: '式5-41：扭转角（总）', value: fmtN(theta_deg,3), unit: '°', note: '轴长 L='+Ls_+' mm' },
+      { label: '式5-41：扭转角（每米）', value: fmtN(theta_per_m,2), unit: '°/m', ok: theta_per_m>=6 && theta_per_m<=15, note: '宜 6°~15°/m' },
+    ]) + '</div>';
+
+  return { Mphi, d_design, tau, theta_per_m };
+}
+
+// ═══════════════════════════════════════════
+// B. 半浮式半轴（三工况，式5-42~5-48）
+// ═══════════════════════════════════════════
+function calcSemiFloat3Cases() {
+  const G2_  = v('G2_shaft');
+  const rr_  = v('rr_shaft');
+  const phi_ = v('phi_shaft');
+  const m2p_ = v('m2p_shaft');
+  const k_   = v('k_dyn');
+  const a_   = v('a_hub');
+  const hg_  = v('hg_shaft');
+  const B2_  = v('B2_shaft');
+  const d_   = v('d_semifloat');
+  const sigA = v('sigmaAllow');
+
+  const d3 = Math.pow(d_, 3);
+
+  // 工况一
+  const Fz2_1 = m2p_ * G2_ / 2;
+  const Fx2_1 = Fz2_1 * phi_;
+  const sigma1 = 32 * a_ * Math.sqrt(Fx2_1*Fx2_1 + Fz2_1*Fz2_1) / (Math.PI * d3);
+  const tau1   = 16 * Fx2_1 * rr_ / (Math.PI * d3);
+  const sigN1  = Math.sqrt(sigma1*sigma1 + 4*tau1*tau1);
+
+  // 工况二
+  const phi1 = 1.0;
+  const Fz2o = G2_ * (0.5 + hg_ * phi1 / B2_);
+  const Fz2i = G2_ - Fz2o;
+  const Fy2o = Fz2o * phi1;
+  const Fy2i = Fz2i * phi1;
+  const sigO  = 32 * (Fy2o*rr_ - Fz2o*a_) / (Math.PI * d3);
+  const sigI  = 32 * (Fy2i*rr_ + Fz2i*a_) / (Math.PI * d3);
+
+  // 工况三
+  const Fz2_3 = k_ * G2_ / 2;
+  const sig3   = 16 * k_ * G2_ * a_ / (Math.PI * d3);
+  const d_min_48 = Math.pow(16 * k_ * G2_ * a_ / (Math.PI * sigA), 1/3);
+  const d_rec_48 = Math.ceil(d_min_48);
+
+  const sigMax = Math.max(sigN1, Math.abs(sigO), Math.abs(sigI), sig3);
+  state.d_semifloat = d_;
+  state.sigMax_sf   = sigMax;
+  state.d_rec_48    = d_rec_48;
+  state.tau_actual_sf = sigMax;
+  state.halfShaft_ok_sf = (sigMax <= sigA);
+
+  document.getElementById('semiFloatResults').innerHTML =
+    '<div class="card"><div class="section-title st-blue">半浮式半轴三工况校核结果（d='+d_+' mm，[σ_n]='+sigA+' MPa）</div>' +
+    mkTable([
+      { 工况:'工况一（式5-42/43）纵向力最大', 载荷:'Fz2='+fmtN(Fz2_1,0)+'N　Fx2='+fmtN(Fx2_1,0)+'N', '弯曲应力σ(MPa)':fmtN(sigma1,1), '扭转切应力τ(MPa)':fmtN(tau1,1), '合成应力σn(MPa)':fmtN(sigN1,1), 校核:sigN1<=sigA?'✓合格':'✗超限' },
+      { 工况:'工况二外轮（式5-44~46）', 载荷:'Fz2o='+fmtN(Fz2o,0)+'N　Fy2o='+fmtN(Fy2o,0)+'N', '弯曲应力σ(MPa)':fmtN(Math.abs(sigO),1), '扭转切应力τ(MPa)':'—', '合成应力σn(MPa)':fmtN(Math.abs(sigO),1), 校核:Math.abs(sigO)<=sigA?'✓合格':'✗超限' },
+      { 工况:'工况二内轮（式5-44~46）', 载荷:'Fz2i='+fmtN(Fz2i,0)+'N　Fy2i='+fmtN(Fy2i,0)+'N', '弯曲应力σ(MPa)':fmtN(Math.abs(sigI),1), '扭转切应力τ(MPa)':'—', '合成应力σn(MPa)':fmtN(Math.abs(sigI),1), 校核:Math.abs(sigI)<=sigA?'✓合格':'✗超限' },
+      { 工况:'工况三（式5-47/48）垂直力最大 ★', 载荷:'Fz2=kG₂/2='+fmtN(Fz2_3,0)+'N（k='+k_+'）', '弯曲应力σ(MPa)':fmtN(sig3,1), '扭转切应力τ(MPa)':'—（纯弯曲）', '合成应力σn(MPa)':fmtN(sig3,1), 校核:sig3<=sigA?'✓合格':'✗超限' },
+    ]) +
+    '<div style="margin:16px 0;padding:14px 18px;background:var(--surface2);border-left:4px solid var(--orange);border-radius:0 8px 8px 0">' +
+    '<div style="font-weight:700;color:var(--orange);margin-bottom:8px">📐 式5-48 弯曲应力计算（工况三，纯弯曲，垂直冲击载荷）</div>' +
+    '<div style="font-family:JetBrains Mono,monospace;font-size:13px;line-height:2.1;color:var(--text-dim)">' +
+    '垂直冲击载荷：Fz2 = kG₂/2 = '+k_+' × '+fmtN(G2_,0)+'/2 = <b style="color:var(--text)">'+fmtN(Fz2_3,0)+' N</b><br>' +
+    '式5-48：σ = 16kG₂a / (πd³) = 32Fz2×a / (πd³)<br>' +
+    '= 32 × '+fmtN(Fz2_3,0)+' × '+a_+' / (π × '+fmtN(d3,0)+')<br>' +
+    '= <b style="color:var(--text)">'+fmtN(sig3,1)+' MPa</b>　' + (sig3<=sigA?'≤':'＞') + ' [σ_n]='+sigA+' MPa<br>' +
+    '反推最小直径：d ≥ ∛(16kG₂a/π[σ_n]) = <b style="color:var(--text)">'+fmtN(d_min_48,2)+' mm</b>，取整建议 <b style="color:var(--accent)">'+d_rec_48+' mm</b>' +
+    '</div></div>' +
+    mkCards([
+      { label:'三工况最大合成应力 σmax', value:fmtN(sigMax,1), unit:'MPa', ok:sigMax<=sigA, note:'许用 [σ_n]='+sigA+' MPa（600~750）' },
+      { label:'式5-48 最小设计直径', value:fmtN(d_min_48,2), unit:'mm', note:'取整建议 → '+d_rec_48+' mm' },
+      { label:'当前直径 d='+d_+' mm 校核', value:sigMax<=sigA?'✓ 满足':'✗ 超限，建议 d≥'+d_rec_48+'mm', unit:'', ok:sigMax<=sigA },
+    ]) + '</div>';
+}
+
+// ═══════════════════════════════════════════
+// C. 可靠性设计（式5-50~5-55）
+// ═══════════════════════════════════════════
+function normCDF(x) {
+  const t = 1/(1+0.3275911*Math.abs(x));
+  const poly = t*(0.254829592+t*(-0.284496736+t*(1.421413741+t*(-1.453152027+t*1.061405429))));
+  const val = 1 - poly*Math.exp(-x*x);
+  return x >= 0 ? val : 1-val;
+}
+function normInvCDF(p) {
+  if(p<=0) return -Infinity; if(p>=1) return Infinity;
+  const a=[2.515517,0.802853,0.010328], b=[1.432788,0.189269,0.001308];
+  const t = Math.sqrt(-2*Math.log(p<=0.5?p:1-p));
+  const num=a[0]+t*(a[1]+t*a[2]), den=1+t*(b[0]+t*(b[1]+t*b[2]));
+  return p<=0.5 ? -(t-num/den) : (t-num/den);
+}
+
+function calcReliability() {
+  const mu_r  = v('mu_r');
+  const sig_r = v('sigma_r');
+  const mu_T  = v('mu_T');
+  const sig_T = v('sigma_T');
+  const R_req = parseFloat(document.getElementById('R_target').value);
+  const d_des = v('d_reliab');
+  const beta_req = normInvCDF(R_req);
+
+  // 1. 实际可靠度
+  const d_m = d_des / 1000;
+  const mu_tau = 16*mu_T / (Math.PI*Math.pow(d_m,3)) / 1e6;
+  const mu_g   = mu_r - mu_tau;
+  const sig_d  = 0.005*d_m;
+  const term_T = 16*sig_T / (Math.PI*Math.pow(d_m,3)) / 1e6;
+  const term_d = 0.24*mu_T / (Math.PI*Math.pow(d_m,3)) / 1e6;
+  const sig_g  = Math.sqrt(sig_r*sig_r + term_T*term_T + term_d*term_d);
+  const beta_actual = mu_g / sig_g;
+  const R_actual = normCDF(beta_actual);
+
+  // 2. 数值法求最小直径
+  let lo=0.005, hi=0.20;
+  let d_min_m = lo;
+  for(let iter=0;iter<120;iter++){
+    const mid=(lo+hi)/2;
+    const mt=16*mu_T/(Math.PI*Math.pow(mid,3))/1e6;
+    const mg=mu_r-mt;
+    const tT=16*sig_T/(Math.PI*Math.pow(mid,3))/1e6;
+    const tD=0.24*mu_T/(Math.PI*Math.pow(mid,3))/1e6;
+    const sg=Math.sqrt(sig_r*sig_r+tT*tT+tD*tD);
+    const bm=mg/sg;
+    if(bm<beta_req) lo=mid; else { d_min_m=mid; hi=mid; }
+  }
+  const d_min_mm = d_min_m * 1000;
+  const d_design_rel = Math.ceil(d_min_mm / 2) * 2;
+
+  const A_55 = 16*mu_T/Math.PI;
+  const B_55 = (256*sig_T*sig_T + 0.0576*mu_T*mu_T) / (Math.PI*Math.PI);
+
+  state.beta_actual = beta_actual;
+  state.R_actual = R_actual;
+  state.d_reliab_min = d_design_rel;
+
+  document.getElementById('reliabilityResults').innerHTML =
+    '<div class="card"><div class="section-title st-purple">可靠性设计计算结果</div>' +
+    '<div style="margin-bottom:14px;font-weight:700;color:var(--text)">① 已设计直径 d='+d_des+' mm 的实际可靠度（式5-50~54）</div>' +
+    mkCards([
+      { label:'平均应力 μτ = 16μT/(πd³)', value:fmtN(mu_tau,1), unit:'MPa' },
+      { label:'极限状态函数均值 μg', value:fmtN(mu_g,2), unit:'MPa', note:'= μr−μτ = '+fmtN(mu_r,1)+'−'+fmtN(mu_tau,1) },
+      { label:'极限状态函数标准差 σg', value:fmtN(sig_g,3), unit:'MPa' },
+      { label:'可靠度指标 β（式5-53）', value:fmtN(beta_actual,4), unit:'', ok:beta_actual>=beta_req, note:'目标 β='+fmtN(beta_req,3) },
+      { label:'实际可靠度 R=Φ(β)（式5-54）', value:fmtN(R_actual,6), unit:'', ok:R_actual>=R_req, note:'目标 R='+R_req },
+    ]) +
+    '<div style="margin:20px 0 14px;font-weight:700;color:var(--text)">② 目标可靠度 R='+R_req+'（β='+fmtN(beta_req,3)+'）对应最小直径（式5-55，数值法）</div>' +
+    mkCards([
+      { label:'最小均值直径 μd（数值解）', value:fmtN(d_min_mm,2), unit:'mm' },
+      { label:'建议设计直径（取偶数 mm）', value:d_design_rel, unit:'mm', ok:true },
+    ]) +
+    '<div style="margin-top:12px;padding:12px 16px;background:var(--purple-bg);border-radius:8px;font-size:12px;color:var(--purple)">' +
+    '💡 σd=0.005×μd（3σ法则加工误差）；A=16μT/π='+fmtN(A_55,1)+' N·m；B='+fmtN(B_55,2)+' (N·m)²</div>' +
+    '</div>';
+}
+
+// ═══════════════════════════════════════════
+// 一键计算全部 & 汇总
+// ═══════════════════════════════════════════
+function calcAllAndSummary() {
+  calcFullFloat();
+  calcSemiFloat3Cases();
+  // 自动把 Mφ 同步到可靠性设计的转矩均值
+  const muT_el = document.getElementById('mu_T');
+  if(state.Mphi && muT_el) muT_el.value = fmtN(state.Mphi/1000, 0);
+  calcReliability();
+  buildSummary();
+  switchTab(4);
+}
+
+function buildSummary() {
+  const type = document.getElementById('halfShaftType').value;
+  const isFF = type === 'fullfloat';
+
+  const stats = document.getElementById('summaryStats');
+  const body = document.getElementById('summaryBody');
+
+  stats.innerHTML =
+    '<div class="stat-box"><div class="sv">'+(isFF?'全浮式':'半浮式')+'</div><div class="sl">半轴类型</div></div>' +
+    '<div class="stat-box"><div class="sv">'+(isFF?(state.d_ff||'—'):(state.d_semifloat||'—'))+'</div><div class="sl">设计直径 (mm)</div></div>' +
+    '<div class="stat-box"><div class="sv">'+(state.Mphi?fmtN(state.Mphi/1000,1):'—')+'</div><div class="sl">Mφ (N·m)</div></div>' +
+    '<div class="stat-box"><div class="sv">'+(state.R_actual?fmtN(state.R_actual,5):'—')+'</div><div class="sl">实际可靠度 R</div></div>' +
+    '<div class="stat-box"><div class="sv">'+(state.d_reliab_min||'—')+'</div><div class="sl">可靠性最小直径 (mm)</div></div>';
+
+  let html = '<div class="card"><div class="card-title"><span class="icon">📋</span>设计参数汇总</div>' +
+    mkTable([
+      { 参数:'满载总质量 mₐ', 数值:v('ma')+' kg', 备注:'' },
+      { 参数:'驱动桥静载荷 G₂', 数值:v('G2_shaft')+' N', 备注:'' },
+      { 参数:'车轮滚动半径 rr', 数值:v('rr_shaft')+' mm', 备注:'' },
+      { 参数:'附着系数 φ', 数值:v('phi_shaft'), 备注:'' },
+      { 参数:'负荷转移系数 m₂\'', 数值:v('m2p_shaft'), 备注:'' },
+      { 参数:'半轴类型', 数值:isFF?'全浮式':'半浮式', 备注:isFF?'仅承受扭矩':'承受弯矩+扭矩' },
+    ]) + '</div>';
+
+  html += '<div class="card"><div class="card-title"><span class="icon">✅</span>强度校核结论</div>';
+
+  if(state.halfShaft_ok_ff !== undefined) {
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface2);border-radius:8px;margin-bottom:10px">' +
+      '<div style="font-weight:700;flex:1">全浮式：τ = '+fmtN(state.tau_actual_ff,1)+' MPa</div>' +
+      badge(state.halfShaft_ok_ff) +
+      '</div>';
+  }
+  if(state.halfShaft_ok_sf !== undefined) {
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface2);border-radius:8px;margin-bottom:10px">' +
+      '<div style="font-weight:700;flex:1">半浮式：σmax = '+fmtN(state.tau_actual_sf,1)+' MPa</div>' +
+      badge(state.halfShaft_ok_sf) +
+      '</div>';
+  }
+  if(state.R_actual !== undefined) {
+    const R_req = parseFloat(document.getElementById('R_target').value);
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface2);border-radius:8px;margin-bottom:10px">' +
+      '<div style="font-weight:700;flex:1">可靠度：R = '+fmtN(state.R_actual,6)+'（目标 '+R_req+'）</div>' +
+      badge(state.R_actual >= R_req) +
+      '</div>';
+  }
+  html += '</div>';
+
+  body.innerHTML = html;
+}
+
+// 初始化：默认隐藏初始态
+document.addEventListener('DOMContentLoaded', () => {
+  onShaftTypeChange('semifloat');
+});
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+if (e.key === 'F12' || 
+(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+(e.ctrlKey && e.key === 'U') ||
+(e.ctrlKey && e.key === 'S')) {
+e.preventDefault();
+return false;
+}
+});
+
+</script>
+<script>
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
+        (e.ctrlKey && e.key === 'S')) {
+      e.preventDefault();
+      return false;
+    }
+  });
+</script>
+
+</body>
+</html>
